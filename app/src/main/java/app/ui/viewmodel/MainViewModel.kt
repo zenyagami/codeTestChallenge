@@ -35,8 +35,8 @@ class MainViewModel @Inject constructor(
             var shouldSort = true
             addSource(getRestaurantListUseCase.run()) { restaurantList ->
                 addSource(getFavoritesUseCase.run()) { favorites ->
-                    shouldSort = false
                     if (favorites.isEmpty()) {
+                        shouldSort = false
                         value = restaurantList.toDefaultSorting()
                         return@addSource
                     }
@@ -50,6 +50,7 @@ class MainViewModel @Inject constructor(
                     }
                     //TODO use sorting in background or with coroutines
                     value = if (shouldSort) {
+                        shouldSort = false
                         sortedList?.toDefaultSorting()
                     } else {
                         sortedList
@@ -61,11 +62,10 @@ class MainViewModel @Inject constructor(
 
     private fun List<RestaurantModel>.toDefaultSorting(): List<RestaurantModel> {
         return this.sortedWith(
-            compareBy({ it.isFavorite },
-                { it.status == "open" },
-                { it.status == "order ahead" },
-                { it.status == "closed" })
-        ).reversed()
+            compareBy<RestaurantModel> { it.isFavorite }
+                .thenBy { it.status == "open" }
+                .thenBy { it.status == "order ahead" }
+                .thenBy { it.status == "closed" }).reversed()
     }
 
     fun onFavoriteClick(favorite: RestaurantModel) {
@@ -74,11 +74,9 @@ class MainViewModel @Inject constructor(
         } else {
             saveFavoriteUseCase.run(favorite.name)
         }
-
     }
 
     fun onSortButtonClicked() {
         _navigationEvent.postValue(MainActivityNavigation.OnSortCLickEvent)
     }
-
 }
