@@ -11,7 +11,6 @@ import domain.GetFavoritesUseCase
 import domain.GetRestaurantListUseCase
 import domain.SaveFavoriteUseCase
 import domain.model.RestaurantModel
-import io.reactivex.disposables.CompositeDisposable
 import javax.inject.Inject
 
 class MainViewModel @Inject constructor(
@@ -22,7 +21,6 @@ class MainViewModel @Inject constructor(
 ) :
     ViewModel() {
     private val _navigationEvent = MutableLiveData<MainActivityNavigation>()
-    private val compositeDisposable = CompositeDisposable()
 
     // i use Transformations.map to not expose mutableLive data to the activity, so teh activity can't post any event
     val navigationEvent: LiveData<MainActivityNavigation> = Transformations.map(_navigationEvent) {
@@ -33,31 +31,41 @@ class MainViewModel @Inject constructor(
 
     private fun loadData(): LiveData<List<RestaurantModel>> {
         return MediatorLiveData<List<RestaurantModel>>().apply {
+            // we only need to sort the first time not every time that the data source change
+            var shouldSort = true
             addSource(getRestaurantListUseCase.run()) { restaurantList ->
-                value = restaurantList
                 addSource(getFavoritesUseCase.run()) { favorites ->
+                    shouldSort = false
                     if (favorites.isEmpty()) {
+                        value = restaurantList.toDefaultSorting()
                         return@addSource
                     }
-                    value = restaurantList.map { restaurantItem ->
+                    // check the previous value to keep the current sorting without modifying the list
+                    val sortedList = (if (value == null) {
+                        restaurantList
+                    } else value)?.map { restaurantItem ->
                         val isFavorite =
                             favorites.find { it.restaurantName == restaurantItem.name } != null
-                        if (isFavorite) {
-                            restaurantItem.copy(isFavorite = true)
-                        } else {
-                            restaurantItem
-                        }
+                        restaurantItem.copy(isFavorite = isFavorite)
+                    }
+                    //TODO use sorting in background or with coroutines
+                    value = if (shouldSort) {
+                        sortedList?.toDefaultSorting()
+                    } else {
+                        sortedList
                     }
                 }
             }
         }
-
-
     }
 
-    override fun onCleared() {
-        compositeDisposable.clear()
-        super.onCleared()
+    private fun List<RestaurantModel>.toDefaultSorting(): List<RestaurantModel> {
+        return this.sortedWith(
+            compareBy({ it.isFavorite },
+                { it.status == "open" },
+                { it.status == "order ahead" },
+                { it.status == "closed" })
+        ).reversed()
     }
 
     fun onFavoriteClick(favorite: RestaurantModel) {
@@ -67,6 +75,10 @@ class MainViewModel @Inject constructor(
             saveFavoriteUseCase.run(favorite.name)
         }
 
+    }
+
+    fun onSortButtonClicked() {
+        _navigationEvent.postValue(MainActivityNavigation.OnSortCLickEvent)
     }
 
 }
