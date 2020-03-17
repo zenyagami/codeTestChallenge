@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="sort_options">
-        <item>Near</item>
-        <item>Favorites</item>
+        <item>Best Match</item>
+        <item>Newest</item>
+        <item>rating average</item>
+        <item>distance</item>
+        <item>popularity</item>
+        <item>average product price</item>
+        <item>delivery cost</item>
+        <item>minimum cost</item>
     </string-array>
 </resources>

@@ -21,6 +21,9 @@ class MainViewModel @Inject constructor(
 ) :
     ViewModel() {
     private val _navigationEvent = MutableLiveData<MainActivityNavigation>()
+    private val sortLiveData = MutableLiveData<List<RestaurantModel>>()
+    private var currentSortOption = 0
+    private var shouldSort = true
 
     // i use Transformations.map to not expose mutableLive data to the activity, so teh activity can't post any event
     val navigationEvent: LiveData<MainActivityNavigation> = Transformations.map(_navigationEvent) {
@@ -28,16 +31,15 @@ class MainViewModel @Inject constructor(
     }
     val restaurantListLiveData = loadData()
 
-
     private fun loadData(): LiveData<List<RestaurantModel>> {
         return MediatorLiveData<List<RestaurantModel>>().apply {
             // we only need to sort the first time not every time that the data source change
-            var shouldSort = true
+
             addSource(getRestaurantListUseCase.run()) { restaurantList ->
                 addSource(getFavoritesUseCase.run()) { favorites ->
                     if (favorites.isEmpty()) {
                         shouldSort = false
-                        value = restaurantList.toDefaultSorting()
+                        value = restaurantList.toSortingList()
                         return@addSource
                     }
                     // check the previous value to keep the current sorting without modifying the list
@@ -51,21 +53,20 @@ class MainViewModel @Inject constructor(
                     //TODO use sorting in background or with coroutines
                     value = if (shouldSort) {
                         shouldSort = false
-                        sortedList?.toDefaultSorting()
+                        sortedList?.toSortingList()
                     } else {
                         sortedList
                     }
+                }
+                addSource(sortLiveData){
+                    value = it
                 }
             }
         }
     }
 
-    private fun List<RestaurantModel>.toDefaultSorting(): List<RestaurantModel> {
-        return this.sortedWith(
-            compareBy<RestaurantModel> { it.isFavorite }
-                .thenBy { it.status == "open" }
-                .thenBy { it.status == "order ahead" }
-                .thenBy { it.status == "closed" }).reversed()
+    private fun List<RestaurantModel>.toSortingList(): List<RestaurantModel> {
+        return this.sortedWith(getDefaultComparator()).reversed()
     }
 
     fun onFavoriteClick(favorite: RestaurantModel) {
@@ -78,5 +79,61 @@ class MainViewModel @Inject constructor(
 
     fun onSortButtonClicked() {
         _navigationEvent.postValue(MainActivityNavigation.OnSortCLickEvent)
+    }
+
+    fun setCurrentSortOption(option: Int) {
+        shouldSort = true
+        currentSortOption = option
+    }
+
+    private fun getDefaultComparator(): Comparator<RestaurantModel> {
+        return compareBy<RestaurantModel> { it.isFavorite }
+            .thenBy { it.status == "open" }
+            .thenBy { it.status == "order ahead" }
+            .thenBy { it.status == "closed" }
+
+    }
+
+    fun getSelectedSortOption(): Int = currentSortOption
+
+    private fun getSort(): Comparator<RestaurantModel> {
+        return SortOptions.values()
+            .associateBy(SortOptions::ordinal)[currentSortOption]?.let { sortOption ->
+            compareBy<RestaurantModel> { it.isFavorite }
+                .thenBy { it.status == "open" }
+                .thenBy { it.status == "order ahead" }
+                .thenBy { it.status == "close" }
+                .apply {
+                    when (sortOption) {
+                        SortOptions.BEST_MATCH -> thenBy { it.bestMatch }
+                        SortOptions.AVERAGE_PRODUCT_PRICE -> thenByDescending { it.averageProductPrice }
+                        SortOptions.DELIVERY_COST -> thenByDescending { it.deliveryCosts }
+                        SortOptions.DISTANCE -> thenByDescending { it.distance  }
+                        SortOptions.MINIMUM_COST -> thenByDescending { it.minCost }
+                        SortOptions.NEWEST_ITEM -> thenByDescending { it.newest }
+                        SortOptions.POPULARITY -> thenBy { it.popularity }
+                        SortOptions.RATING_AVERAGE -> thenByDescending { it.averageProductPrice }
+                    }
+                }
+        } ?: getDefaultComparator()
+    }
+
+    fun applySorting() {
+        //I'm using cache to avoid call the "API/JSON" everytime the user change sorting and save data/calls, this can be changed easily to call the api tho
+        restaurantListLiveData.value?.let {
+            sortLiveData.postValue(it.sortedWith(getSort()).reversed())
+        }
+    }
+
+    //TODO use strings map or something better
+    private enum class SortOptions {
+        BEST_MATCH,
+        NEWEST_ITEM,
+        RATING_AVERAGE,
+        DISTANCE,
+        POPULARITY,
+        AVERAGE_PRODUCT_PRICE,
+        DELIVERY_COST,
+        MINIMUM_COST
     }
 }

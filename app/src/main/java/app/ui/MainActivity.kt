@@ -1,6 +1,5 @@
 package app.ui
 
-import android.content.DialogInterface
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -13,7 +12,6 @@ import app.ui.model.MainActivityNavigation
 import app.ui.viewmodel.MainViewModel
 import domain.model.RestaurantModel
 import kotlinx.android.synthetic.main.activity_main.*
-import timber.log.Timber
 
 // I could use a Fragment but for easy development I will use an Activity :)
 
@@ -50,10 +48,7 @@ class MainActivity : BaseMvvmActivity<MainViewModel>() {
                 LinearLayoutManager(applicationContext, LinearLayoutManager.VERTICAL, false)
             adapter = this@MainActivity.adapter
         }
-
-        viewModel.restaurantListLiveData.observe(this, Observer {
-            setDataSetItem(it)
-        })
+        setupListInput()
 
         viewModel.navigationEvent.observe(this, Observer {
             when (it) {
@@ -62,25 +57,32 @@ class MainActivity : BaseMvvmActivity<MainViewModel>() {
         })
     }
 
+    private fun setupListInput() {
+        viewModel.restaurantListLiveData.removeObservers(this)
+        viewModel.restaurantListLiveData.observe(this, Observer {
+            setDataSetItem(it)
+        })
+    }
+
     private fun displaySortDialog() {
         AlertDialog.Builder(this)
             .setPositiveButton(
                 android.R.string.ok
-            ) { dialog, which ->
-                Timber.d("Single false")
+            ) { _, _ ->
+                viewModel.applySorting()
             }.setSingleChoiceItems(
                 R.array.sort_options,
-                0,
-                { dialog, which ->
-                    Timber.d("Single true")
-                })
+                viewModel.getSelectedSortOption()
+            ) { _, which ->
+                viewModel.setCurrentSortOption(which)
+            }
             .show()
 
     }
 
     private fun setDataSetItem(list: List<RestaurantModel>) {
         adapter.submitList(list)
+        // after sorting
+        restaurantViewList.smoothScrollToPosition(0)
     }
-
-
 }
