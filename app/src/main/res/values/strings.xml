@@ -1,3 +1,11 @@
 <resources>
     <string name="menu_sort">Sort by</string>
+    <string name="sort_best_match">Best Match</string>
+    <string name="sort_rating">Average rating</string>
+    <string name="sort_popularity">Popularity</string>
+    <string name="sort_new_items">New</string>
+    <string name="sort_min_cost">Min Price</string>
+    <string name="sort_distance">Distance</string>
+    <string name="sort_delivery_cost">Delivery Cost</string>
+    <string name="sort_avergae_price">Average Product Size</string>
 </resources>

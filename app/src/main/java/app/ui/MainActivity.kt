@@ -1,8 +1,10 @@
 package app.ui
 
 import android.os.Bundle
+import android.os.Handler
 import android.view.Menu
 import android.view.MenuItem
+import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -53,8 +55,13 @@ class MainActivity : BaseMvvmActivity<MainViewModel>() {
         viewModel.navigationEvent.observe(this, Observer {
             when (it) {
                 is MainActivityNavigation.OnSortCLickEvent -> displaySortDialog()
+                is MainActivityNavigation.OnSortChanged -> displayNewSortingTitle(it.sortResourceId)
             }
         })
+    }
+
+    private fun displayNewSortingTitle(@StringRes sortResourceId: Int) {
+        sortingMethod.setText(sortResourceId)
     }
 
     private fun setupListInput() {
@@ -83,6 +90,9 @@ class MainActivity : BaseMvvmActivity<MainViewModel>() {
     private fun setDataSetItem(list: List<RestaurantModel>) {
         adapter.submitList(list)
         // after sorting
-        restaurantViewList.smoothScrollToPosition(0)
+        Handler().postDelayed({
+            restaurantViewList.smoothScrollToPosition(0)
+        }, 200)
+
     }
 }

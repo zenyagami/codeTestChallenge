@@ -5,6 +5,7 @@ import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
 import androidx.lifecycle.ViewModel
+import app.R
 import app.ui.model.MainActivityNavigation
 import domain.DeleteFavoriteUseCase
 import domain.GetFavoritesUseCase
@@ -22,7 +23,7 @@ class MainViewModel @Inject constructor(
     ViewModel() {
     private val _navigationEvent = MutableLiveData<MainActivityNavigation>()
     private val sortLiveData = MutableLiveData<List<RestaurantModel>>()
-    private var currentSortOption = 0
+    private var currentSortOption = SortOptions.BEST_MATCH.ordinal
     private var shouldSort = true
 
     // i use Transformations.map to not expose mutableLive data to the activity, so teh activity can't post any event
@@ -58,7 +59,7 @@ class MainViewModel @Inject constructor(
                         sortedList
                     }
                 }
-                addSource(sortLiveData){
+                addSource(sortLiveData) {
                     value = it
                 }
             }
@@ -66,7 +67,7 @@ class MainViewModel @Inject constructor(
     }
 
     private fun List<RestaurantModel>.toSortingList(): List<RestaurantModel> {
-        return this.sortedWith(getDefaultComparator()).reversed()
+        return this.sortedWith(getSort()).reversed()
     }
 
     fun onFavoriteClick(favorite: RestaurantModel) {
@@ -92,6 +93,7 @@ class MainViewModel @Inject constructor(
             .thenBy { it.status == "order ahead" }
             .thenBy { it.status == "closed" }
 
+
     }
 
     fun getSelectedSortOption(): Int = currentSortOption
@@ -99,20 +101,17 @@ class MainViewModel @Inject constructor(
     private fun getSort(): Comparator<RestaurantModel> {
         return SortOptions.values()
             .associateBy(SortOptions::ordinal)[currentSortOption]?.let { sortOption ->
-            compareBy<RestaurantModel> { it.isFavorite }
-                .thenBy { it.status == "open" }
-                .thenBy { it.status == "order ahead" }
-                .thenBy { it.status == "close" }
-                .apply {
+            getDefaultComparator()
+                .thenBy {
                     when (sortOption) {
-                        SortOptions.BEST_MATCH -> thenBy { it.bestMatch }
-                        SortOptions.AVERAGE_PRODUCT_PRICE -> thenByDescending { it.averageProductPrice }
-                        SortOptions.DELIVERY_COST -> thenByDescending { it.deliveryCosts }
-                        SortOptions.DISTANCE -> thenByDescending { it.distance  }
-                        SortOptions.MINIMUM_COST -> thenByDescending { it.minCost }
-                        SortOptions.NEWEST_ITEM -> thenByDescending { it.newest }
-                        SortOptions.POPULARITY -> thenBy { it.popularity }
-                        SortOptions.RATING_AVERAGE -> thenByDescending { it.averageProductPrice }
+                        SortOptions.BEST_MATCH -> it.bestMatch
+                        SortOptions.AVERAGE_PRODUCT_PRICE -> it.averageProductPrice
+                        SortOptions.DELIVERY_COST -> it.deliveryCosts
+                        SortOptions.DISTANCE -> it.distance
+                        SortOptions.MINIMUM_COST -> it.minCost
+                        SortOptions.NEWEST_ITEM -> it.newest
+                        SortOptions.POPULARITY -> it.popularity
+                        SortOptions.RATING_AVERAGE -> it.averageProductPrice
                     }
                 }
         } ?: getDefaultComparator()
@@ -121,8 +120,29 @@ class MainViewModel @Inject constructor(
     fun applySorting() {
         //I'm using cache to avoid call the "API/JSON" everytime the user change sorting and save data/calls, this can be changed easily to call the api tho
         restaurantListLiveData.value?.let {
-            sortLiveData.postValue(it.sortedWith(getSort()).reversed())
+            sortLiveData.postValue(it.sortedWith(getSort()).asReversed())
+            _navigationEvent.postValue(
+                MainActivityNavigation.OnSortChanged(
+                    getStringResourceFromSorting()
+                )
+            )
         }
+    }
+
+    private fun getStringResourceFromSorting(): Int {
+        return SortOptions.values()
+            .associateBy(SortOptions::ordinal)[currentSortOption]?.let { sortOption ->
+            when (sortOption) {
+                SortOptions.BEST_MATCH -> R.string.sort_best_match
+                SortOptions.RATING_AVERAGE -> R.string.sort_rating
+                SortOptions.POPULARITY -> R.string.sort_popularity
+                SortOptions.NEWEST_ITEM -> R.string.sort_new_items
+                SortOptions.MINIMUM_COST -> R.string.sort_min_cost
+                SortOptions.DISTANCE -> R.string.sort_distance
+                SortOptions.DELIVERY_COST -> R.string.sort_delivery_cost
+                SortOptions.AVERAGE_PRODUCT_PRICE -> R.string.sort_avergae_price
+            }
+        } ?: R.string.sort_best_match
     }
 
     //TODO use strings map or something better
