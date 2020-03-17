@@ -3,7 +3,6 @@ package app.ui.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Transformations
 import androidx.lifecycle.ViewModel
 import app.R
 import app.ui.model.MainActivityNavigation
@@ -26,17 +25,17 @@ class MainViewModel @Inject constructor(
     private var currentSortOption = SortOptions.BEST_MATCH.ordinal
     private var shouldSort = true
 
-    // i use Transformations.map to not expose mutableLive data to the activity, so teh activity can't post any event
-    val navigationEvent: LiveData<MainActivityNavigation> = Transformations.map(_navigationEvent) {
-        it
-    }
+    // i use Transformations.map to not expose mutableLive data to the activity, so the activity can't post any event
+    val navigationEvent: LiveData<MainActivityNavigation>
+        get() = _navigationEvent
+
     val restaurantListLiveData = loadData()
 
     private fun loadData(): LiveData<List<RestaurantModel>> {
         return MediatorLiveData<List<RestaurantModel>>().apply {
             // we only need to sort the first time not every time that the data source change
-
-            addSource(getRestaurantListUseCase.run()) { restaurantList ->
+            val liveData = getRestaurantListUseCase.run()
+            addSource(liveData) { restaurantList ->
                 addSource(getFavoritesUseCase.run()) { favorites ->
                     if (favorites.isEmpty()) {
                         shouldSort = false
@@ -89,9 +88,9 @@ class MainViewModel @Inject constructor(
 
     private fun getDefaultComparator(): Comparator<RestaurantModel> {
         return compareBy<RestaurantModel> { it.isFavorite }
-            .thenBy { it.status == "open" }
-            .thenBy { it.status == "order ahead" }
-            .thenBy { it.status == "closed" }
+            .thenBy { it.status == SORTING_OPEN }
+            .thenBy { it.status == SORTING_ORDER_AHEAD }
+            .thenBy { it.status == SORTING_CLOSE }
 
 
     }
@@ -155,5 +154,11 @@ class MainViewModel @Inject constructor(
         AVERAGE_PRODUCT_PRICE,
         DELIVERY_COST,
         MINIMUM_COST
+    }
+
+    companion object {
+        private const val SORTING_OPEN = "open"
+        private const val SORTING_CLOSE = "closed"
+        private const val SORTING_ORDER_AHEAD = "order ahead"
     }
 }
