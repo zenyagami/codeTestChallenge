@@ -1,4 +1,4 @@
-# Welcome to StackEdit!
+# Code Challenge
 
 Compiled in Android Studio 3.6.1 (Stable version)
 
