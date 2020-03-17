@@ -22,10 +22,11 @@ android {
                 arguments = ["room.schemaLocation": "$projectDir/schemas".toString(), "room.incremental": "true", "room.expandProjection": "true"]
             }
         }
+        dataBinding {
+            enabled = true
+        }
     }
-    buildFeatures{
-        dataBinding = true
-    }
+
     buildTypes {
         release {
             minifyEnabled false

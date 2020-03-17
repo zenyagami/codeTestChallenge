@@ -62,12 +62,16 @@ class MainActivity : BaseMvvmActivity<MainViewModel>() {
 
     private fun displayNewSortingTitle(@StringRes sortResourceId: Int) {
         sortingMethod.setText(sortResourceId)
+        // after sorting
+        Handler().postDelayed({
+            restaurantViewList.smoothScrollToPosition(0)
+        }, 200)
     }
 
     private fun setupListInput() {
         viewModel.restaurantListLiveData.removeObservers(this)
         viewModel.restaurantListLiveData.observe(this, Observer {
-            setDataSetItem(it)
+            adapter.submitList(it)
         })
     }
 
@@ -84,15 +88,6 @@ class MainActivity : BaseMvvmActivity<MainViewModel>() {
                 viewModel.setCurrentSortOption(which)
             }
             .show()
-
-    }
-
-    private fun setDataSetItem(list: List<RestaurantModel>) {
-        adapter.submitList(list)
-        // after sorting
-        Handler().postDelayed({
-            restaurantViewList.smoothScrollToPosition(0)
-        }, 200)
 
     }
 }

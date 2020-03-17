@@ -34,8 +34,8 @@ class MainViewModel @Inject constructor(
     private fun loadData(): LiveData<List<RestaurantModel>> {
         return MediatorLiveData<List<RestaurantModel>>().apply {
             // we only need to sort the first time not every time that the data source change
-            val liveData = getRestaurantListUseCase.run()
-            addSource(liveData) { restaurantList ->
+            //val liveData = Flowable.just(emptyList<RestaurantModel>()).toLiveData()
+            addSource(getRestaurantListUseCase.run()) { restaurantList ->
                 addSource(getFavoritesUseCase.run()) { favorites ->
                     if (favorites.isEmpty()) {
                         shouldSort = false
